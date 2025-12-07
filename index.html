@@ -23,6 +23,17 @@
         /* Custom Font giả lập Roblox */
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Fredoka', sans-serif; }
+        
+        /* Hiệu ứng loading */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #00b06f;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-[#111] text-white">
@@ -31,18 +42,13 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
-        // Import toàn bộ Icon từ thư viện
-        import { BookOpen, Star, Trophy, ArrowRight, CheckCircle, XCircle, RefreshCcw, Home, Volume2, Award, Zap, Sparkles, Loader, MessageCircleQuestion, Check, X, Play, User, Crown, Medal, Search, Bell, Menu, Gamepad2, MoveRight, Sword, Shield, Skull, MessageSquare } from 'lucide-react';
+        // Import Icon
+        import { BookOpen, Star, Trophy, ArrowRight, CheckCircle, XCircle, RefreshCcw, Home, Award, Zap, Sparkles, Loader, Check, X, Play, User, Search, Bell, Gamepad2, Skull, MessageSquare } from 'lucide-react';
 
-        // --- CẤU HÌNH API (ĐIỀN KEY CỦA BẠN VÀO DƯỚI ĐÂY) ---
-        const apiKey = ""; // <--- Dán API Key vào giữa 2 dấu ngoặc kép, ví dụ: "AIzaSy..."
+        // --- CẤU HÌNH API (ĐÃ NẠP KEY CỦA BẠN) ---
+        const apiKey = "AIzaSyAOBceTdY5nggWX3s7Pyhe1GPKag2IDv1U"; 
 
         const callGeminiAPI = async (prompt, isJson = false) => {
-            if (!apiKey) {
-                alert("Bạn chưa nhập API Key trong code! Hãy sửa file index.html và điền Key vào dòng 'const apiKey'.");
-                return null;
-            }
-
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             
             const payload = {
@@ -89,22 +95,23 @@
                 return isJson ? JSON.parse(text) : text;
             } catch (error) {
                 console.error("Gemini API Error:", error);
+                alert("Lỗi kết nối AI: " + error.message);
                 return null;
             }
         };
 
-        // --- COMPONENT ROBUX ICON (SVG VECTOR) ---
+        // --- COMPONENT ROBUX ICON ---
         const RobuxIcon = ({ className }) => (
             <svg viewBox="0 0 100 100" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                 <path d="M50 2 L93.3 27 V73 L50 98 L6.7 73 V27 Z M32 32 L68 32 L68 68 L32 68 Z" fillRule="evenodd" />
             </svg>
         );
 
-        // --- HỆ THỐNG AVATAR ỔN ĐỊNH (DiceBear) ---
+        // --- AVATAR ---
         const getAvatar = (seed, type = 'bottts') => 
             `https://api.dicebear.com/9.x/${type}/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
 
-        // --- DỮ LIỆU GIẢ LẬP LEADERBOARD ---
+        // --- DỮ LIỆU MẪU ---
         const MOCK_LEADERBOARD = [
             { id: 'u1', name: 'BloxMaster_99', xp: 2450, level: 12, avatar: getAvatar('BloxMaster', 'bottts') },
             { id: 'u2', name: 'NoobSlayer', xp: 2100, level: 10, avatar: getAvatar('NoobSlayer', 'avataaars') },
@@ -113,91 +120,56 @@
             { id: 'u5', name: 'RedValkyrie', xp: 1400, level: 7, avatar: getAvatar('RedVal', 'bottts') },
         ];
 
-        // --- DỮ LIỆU BÀI HỌC (GAME MAPS) ---
         const CURRICULUM_DATA = [
             {
                 id: 1,
                 title: "Bloxburg City (Unit 1)",
                 image: "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?q=80&w=800&auto=format&fit=crop", 
-                color: "from-blue-600 to-cyan-500",
                 description: "Khám phá thành phố! Học từ vựng về địa điểm và cấu trúc Is there/Are there.",
-                likes: "94%",
-                active: "12.5k",
+                likes: "94%", active: "12.5k",
                 questions: [
-                    {
-                        id: 1, type: "choice", question: "Is there a _______ in your town where we can see old things?",
-                        options: ["library", "museum", "square", "bridge"], answer: "museum", explanation: "Museum (bảo tàng) là nơi trưng bày các đồ vật cũ/cổ."
-                    },
-                    {
-                        id: 2, type: "grammar_sort", question: "Build the correct sentence structure:",
-                        words: ["Are", "there", "any", "shops", "here?"], answer: "Are there any shops here?", explanation: "Cấu trúc câu hỏi số nhiều: Are there + any + plural nouns?"
-                    },
-                    {
-                        id: 3, type: "choice", question: "Which word is the opposite of 'modern'?",
-                        options: ["new", "clean", "old", "ugly"], answer: "old", explanation: "Modern (hiện đại) trái nghĩa với Old (cũ/cổ)."
-                    },
-                    {
-                        id: 4, type: "choice", question: "The market is _______ the station.",
-                        options: ["next", "near", "between", "opposite to"], answer: "near", explanation: "'Near' (gần) không cần 'to'. 'Next' phải đi với 'to'. 'Between' cần 2 vật."
-                    }
+                    { id: 1, type: "choice", question: "Is there a _______ in your town where we can see old things?", options: ["library", "museum", "square", "bridge"], answer: "museum", explanation: "Museum (bảo tàng) là nơi trưng bày các đồ vật cũ/cổ." },
+                    { id: 2, type: "grammar_sort", question: "Build the correct sentence structure:", words: ["Are", "there", "any", "shops", "here?"], answer: "Are there any shops here?", explanation: "Cấu trúc câu hỏi số nhiều: Are there + any + plural nouns?" },
+                    { id: 3, type: "choice", question: "Which word is the opposite of 'modern'?", options: ["new", "clean", "old", "ugly"], answer: "old", explanation: "Modern (hiện đại) trái nghĩa với Old (cũ/cổ)." },
+                    { id: 4, type: "choice", question: "The market is _______ the station.", options: ["next", "near", "between", "opposite to"], answer: "near", explanation: "'Near' (gần) không cần 'to'. 'Next' phải đi với 'to'. 'Between' cần 2 vật." }
                 ]
             },
             {
                 id: 2,
                 title: "Daily Life Tycoon (Unit 2)",
                 image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=800&auto=format&fit=crop", 
-                color: "from-emerald-500 to-green-600",
                 description: "Quản lý thời gian của bạn! Học về thói quen hàng ngày và thì Hiện tại đơn.",
-                likes: "91%",
-                active: "8.2k",
+                likes: "91%", active: "8.2k",
                 questions: [
-                    {
-                        id: 1, type: "choice", question: "I usually _______ up at 6.00 a.m.",
-                        options: ["get", "gets", "getting", "got"], answer: "get", explanation: "Hiện tại đơn với chủ ngữ 'I' dùng động từ nguyên mẫu."
-                    },
-                    {
-                        id: 2, type: "choice", question: "_______ your dad watch TV in the evening?",
-                        options: ["Do", "Is", "Does", "Are"], answer: "Does", explanation: "Câu hỏi hiện tại đơn với chủ ngữ số ít (your dad) dùng trợ động từ 'Does'."
-                    }
+                    { id: 1, type: "choice", question: "I usually _______ up at 6.00 a.m.", options: ["get", "gets", "getting", "got"], answer: "get", explanation: "Hiện tại đơn với chủ ngữ 'I' dùng động từ nguyên mẫu." },
+                    { id: 2, type: "choice", question: "_______ your dad watch TV in the evening?", options: ["Do", "Is", "Does", "Are"], answer: "Does", explanation: "Câu hỏi hiện tại đơn với chủ ngữ số ít (your dad) dùng trợ động từ 'Does'." }
                 ]
             },
             {
                 id: 3,
                 title: "Adopt Me: Wild Life (Unit 3)",
                 image: "https://images.unsplash.com/photo-1546182990-dffeafbe841d?q=80&w=800&auto=format&fit=crop", 
-                color: "from-orange-500 to-amber-600",
                 description: "Từ vựng: Động vật | Ngữ pháp: So sánh nhất",
+                likes: "88%", active: "5.4k",
                 questions: [
-                    {
-                        id: 1, type: "choice", question: "The ostrich is the _______ bird in the world.",
-                        options: ["fast", "faster", "fastest", "most fast"], answer: "fastest", explanation: "So sánh nhất với tính từ ngắn (fast) -> the fastest."
-                    }
+                    { id: 1, type: "choice", question: "The ostrich is the _______ bird in the world.", options: ["fast", "faster", "fastest", "most fast"], answer: "fastest", explanation: "So sánh nhất với tính từ ngắn (fast) -> the fastest." }
                 ]
             }
         ];
 
         // --- COMPONENTS ---
 
-        const Confetti = () => {
-            return (
-                <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-                    {[...Array(20)].map((_, i) => (
-                        <div key={i} className="absolute animate-bounce opacity-70"
-                            style={{
-                                left: `${Math.random() * 100}%`, top: `-10%`,
-                                animation: `fall ${Math.random() * 3 + 2}s linear infinite`,
-                                animationDelay: `${Math.random() * 5}s`,
-                                color: ['#FFD700', '#FF6347', '#4169E1', '#32CD32'][Math.floor(Math.random() * 4)],
-                                fontSize: '24px'
-                            }}
-                        >
-                            {['🎉', '⭐', '✨', '🎈'][Math.floor(Math.random() * 4)]}
-                        </div>
-                    ))}
-                    <style>{` @keyframes fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } } `}</style>
-                </div>
-            );
-        };
+        const Confetti = () => (
+            <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+                {[...Array(20)].map((_, i) => (
+                    <div key={i} className="absolute animate-bounce opacity-70"
+                        style={{ left: `${Math.random() * 100}%`, top: `-10%`, animation: `fall ${Math.random() * 3 + 2}s linear infinite`, animationDelay: `${Math.random() * 5}s`, color: ['#FFD700', '#FF6347', '#4169E1', '#32CD32'][Math.floor(Math.random() * 4)], fontSize: '24px' }}>
+                        {['🎉', '⭐', '✨', '🎈'][Math.floor(Math.random() * 4)]}
+                    </div>
+                ))}
+                <style>{` @keyframes fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } } `}</style>
+            </div>
+        );
 
         const CustomCursor = ({ status }) => {
             const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -208,9 +180,7 @@
             }, []);
             if (!status) return null;
             return (
-                <div className="fixed pointer-events-none z-50 transition-transform duration-75 ease-out flex items-center justify-center"
-                    style={{ left: position.x, top: position.y, transform: 'translate(-50%, -50%)' }}
-                >
+                <div className="fixed pointer-events-none z-50 transition-transform duration-75 ease-out flex items-center justify-center" style={{ left: position.x, top: position.y, transform: 'translate(-50%, -50%)' }}>
                     <div className={`p-3 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.3)] transform scale-110 animate-bounce border-4 border-white/50 ${status === 'correct' ? 'bg-[#00b06f] text-white rotate-12' : 'bg-[#ff3e3e] text-white -rotate-12'}`}>
                         {status === 'correct' ? <Check size={32} strokeWidth={4} /> : <X size={32} strokeWidth={4} />}
                     </div>
@@ -221,68 +191,34 @@
         const Header = ({ score, level, userName, onLogout, onLeaderboardClick }) => {
             const [xpAnimation, setXpAnimation] = useState(null);
             const prevScoreRef = useRef(score);
-
             useEffect(() => {
                 if (score > prevScoreRef.current) {
                     const gained = score - prevScoreRef.current;
                     setXpAnimation(gained);
                     const timer = setTimeout(() => setXpAnimation(null), 1500);
-                    prevScoreRef.current = score; 
-                    return () => clearTimeout(timer);
+                    prevScoreRef.current = score; return () => clearTimeout(timer);
                 } else { prevScoreRef.current = score; }
             }, [score]);
 
             return (
                 <div className="bg-[#1e1e24] border-b border-[#393b3d] p-3 sticky top-0 z-40 flex justify-between items-center text-white shadow-md relative overflow-hidden">
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
-                    <div className="flex items-center space-x-4 relative z-10">
-                        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg font-black text-2xl tracking-tighter shadow-lg transform hover:scale-105 transition-transform cursor-pointer border border-white/20">
-                            BLOX<span className="text-yellow-400">STUDY</span>
-                        </div>
+                    <div className="flex items-center space-x-4 relative z-10 cursor-pointer" onClick={() => window.location.reload()}>
+                        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg font-black text-2xl tracking-tighter shadow-lg border border-white/20">BLOX<span className="text-yellow-400">STUDY</span></div>
                     </div>
                     <div className="flex items-center space-x-4 relative z-10">
                         <button onClick={onLeaderboardClick} className="relative flex items-center bg-[#232527] hover:bg-[#393b3d] px-4 py-1.5 rounded-full border border-[#393b3d] transition-colors group">
                             <div className="w-6 h-6 mr-2 flex items-center justify-center text-[#00b06f]"><RobuxIcon className="w-full h-full drop-shadow-sm" /></div>
                             <span className="font-extrabold text-white text-lg tracking-wide">{score}</span>
-                            {xpAnimation && (
-                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
-                                    <div className="text-[#00b06f] font-black text-2xl animate-floatUp whitespace-nowrap bg-black/80 px-3 py-1 rounded-lg border-2 border-[#00b06f] shadow-[0_0_15px_#00b06f] flex items-center">
-                                        <RobuxIcon className="w-5 h-5 mr-1" />+{xpAnimation}
-                                    </div>
-                                </div>
-                            )}
+                            {xpAnimation && ( <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"><div className="text-[#00b06f] font-black text-2xl animate-floatUp whitespace-nowrap bg-black/80 px-3 py-1 rounded-lg border-2 border-[#00b06f] shadow-[0_0_15px_#00b06f] flex items-center"><RobuxIcon className="w-5 h-5 mr-1" />+{xpAnimation}</div></div> )}
                         </button>
                         <div className="flex items-center space-x-3 cursor-pointer" onClick={onLogout}>
                             <div className="text-right hidden sm:block">
                                 <div className="font-bold text-sm text-white">{userName}</div>
                                 <div className="text-xs text-gray-400 font-bold">Level {level}</div>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-gray-600 overflow-hidden border-2 border-gray-500 hover:border-white transition-colors relative">
-                                <img src={getAvatar(userName, 'bottts')} alt="Avatar" className="w-full h-full object-cover" />
-                            </div>
+                            <div className="w-10 h-10 rounded-full bg-gray-600 overflow-hidden border-2 border-gray-500 hover:border-white transition-colors relative"><img src={getAvatar(userName, 'bottts')} alt="Avatar" className="w-full h-full object-cover" /></div>
                         </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const WelcomeScreen = ({ onStartApp }) => {
-            const [name, setName] = useState('');
-            return (
-                <div className="min-h-screen bg-[#111] flex items-center justify-center p-4 relative overflow-hidden font-sans">
-                    <div className="bg-[#232527]/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md text-center border border-[#393b3d] relative z-10 animate-slideUp">
-                        <div className="mb-8 flex justify-center">
-                            <div className="w-32 h-32 relative group">
-                                <img src={getAvatar('Player1', 'bottts')} alt="Noob" className="w-full h-full object-contain drop-shadow-2xl animate-bounce" />
-                            </div>
-                        </div>
-                        <h1 className="text-4xl font-black text-white mb-2 tracking-tight">BLOX STUDY</h1>
-                        <p className="text-gray-300 mb-8 font-medium">Nhập tên nhân vật của bạn để tham gia server!</p>
-                        <form onSubmit={(e) => { e.preventDefault(); if(name.trim()) onStartApp(name); }} className="space-y-6">
-                            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Display Name..." 
-                                className="w-full px-6 py-4 bg-black/50 border-2 border-[#393b3d] rounded-xl focus:border-white focus:ring-0 outline-none transition-all text-xl font-bold text-white placeholder-gray-500 text-center" autoFocus />
-                            <button type="submit" disabled={!name.trim()} className="w-full py-4 bg-[#00b06f] hover:bg-[#00e08e] text-white rounded-xl font-black text-xl shadow-[0_4px_0_#008252] active:shadow-none active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider">Play</button>
-                        </form>
                     </div>
                 </div>
             );
@@ -301,21 +237,13 @@
                     <p className="text-gray-400 text-sm mb-4 line-clamp-2 h-10">{unit.description}</p>
                     {!locked ? (
                         <div className="mt-auto space-y-3">
-                            <div className="w-full bg-[#111] h-2 rounded-full overflow-hidden">
-                                <div className="bg-[#00b06f] h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
-                            </div>
+                            <div className="w-full bg-[#111] h-2 rounded-full overflow-hidden"><div className="bg-[#00b06f] h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div></div>
                             <div className="flex gap-2">
-                                <button onClick={() => onStart(unit)} className="flex-1 bg-[#00b06f] hover:bg-[#00e08e] text-white font-black py-3 rounded-lg shadow-[0_4px_0_#008252] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center text-lg">
-                                    <Play size={20} className="mr-2 fill-white" /> {progress > 0 ? "Resume" : "Play"}
-                                </button>
-                                <button onClick={() => onAIGenerate(unit)} disabled={isGenerating} className="bg-purple-600 hover:bg-purple-500 text-white font-bold p-3 rounded-lg shadow-[0_4px_0_#5b21b6] active:shadow-none active:translate-y-1 transition-all disabled:opacity-50">
-                                    {isGenerating ? <Loader size={20} className="animate-spin"/> : <Sparkles size={20} />}
-                                </button>
+                                <button onClick={() => onStart(unit)} className="flex-1 bg-[#00b06f] hover:bg-[#00e08e] text-white font-black py-3 rounded-lg shadow-[0_4px_0_#008252] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center text-lg"><Play size={20} className="mr-2 fill-white" /> {progress > 0 ? "Resume" : "Play"}</button>
+                                <button onClick={() => onAIGenerate(unit)} disabled={isGenerating} className="bg-purple-600 hover:bg-purple-500 text-white font-bold p-3 rounded-lg shadow-[0_4px_0_#5b21b6] active:shadow-none active:translate-y-1 transition-all disabled:opacity-50">{isGenerating ? <div className="loader"></div> : <Sparkles size={20} />}</button>
                             </div>
                         </div>
-                    ) : (
-                        <div className="mt-auto pt-4 border-t border-[#393b3d] text-center"><span className="text-gray-500 font-bold text-sm uppercase tracking-widest">Locked Map</span></div>
-                    )}
+                    ) : ( <div className="mt-auto pt-4 border-t border-[#393b3d] text-center"><span className="text-gray-500 font-bold text-sm uppercase tracking-widest">Locked Map</span></div> )}
                 </div>
             </div>
         );
@@ -329,72 +257,68 @@
             </button>
         );
 
-        const QuizScreen = ({ unit, onComplete, onBack, onAnswerSubmit, initialIndex = 0 }) => {
-            const [currentQIndex, setCurrentQIndex] = useState(initialIndex);
+        const QuizScreen = ({ unit, onComplete, onBack, onAnswerSubmit }) => {
+            const [currentQIndex, setCurrentQIndex] = useState(0);
             const [selectedOption, setSelectedOption] = useState(null);
             const [isAnswered, setIsAnswered] = useState(false);
             const [isCorrect, setIsCorrect] = useState(false);
             const [aiExplanation, setAiExplanation] = useState(null);
             const [isLoadingAI, setIsLoadingAI] = useState(false);
             const [sortedWords, setSortedWords] = useState([]);
+            
             const question = unit.questions[currentQIndex];
 
-            useEffect(() => {
-                setSelectedOption(null); setIsAnswered(false); setIsCorrect(false); setSortedWords([]); setAiExplanation(null); setIsLoadingAI(false);
-            }, [currentQIndex]);
+            useEffect(() => { setSelectedOption(null); setIsAnswered(false); setIsCorrect(false); setSortedWords([]); setAiExplanation(null); setIsLoadingAI(false); }, [currentQIndex]);
 
             const handleChoice = (option) => { if (isAnswered) return; setSelectedOption(option); const correct = option === question.answer; handleAnswerLogic(correct); };
             const handleAnswerLogic = (correct) => { setIsAnswered(true); setIsCorrect(correct); onAnswerSubmit(correct, currentQIndex + 1); };
             const handleWordClick = (word, index) => { if (isAnswered) return; setSortedWords([...sortedWords, { word, originalIndex: index }]); };
             const handleResetSort = () => { if (isAnswered) return; setSortedWords([]); };
             const checkSortAnswer = () => { if (isAnswered) return; const sentence = sortedWords.map(w => w.word).join(" "); const correct = sentence === question.answer; handleAnswerLogic(correct); };
+            
             const askAITeacher = async () => {
                 setIsLoadingAI(true);
-                const prompt = `Giải thích ngắn gọn cho game thủ Roblox lớp 6 tại sao đáp án: "${question.question}" lại là "${question.answer}". Dùng ngôn ngữ vui vẻ, game thủ.`;
+                const prompt = `Giải thích ngắn gọn (dưới 50 từ) cho học sinh lớp 6 tại sao đáp án cho câu hỏi "${question.question}" lại là "${question.answer}". Trả lời vui vẻ.`;
                 const explanation = await callGeminiAPI(prompt);
                 setAiExplanation(explanation);
                 setIsLoadingAI(false);
             };
+
             const nextQuestion = () => { if (currentQIndex < unit.questions.length - 1) { setCurrentQIndex(c => c + 1); } else { onComplete(); } };
 
             return (
-                <div className="max-w-5xl mx-auto p-4 md:p-6 animate-fadeIn pb-20 relative">
+                <div className="max-w-5xl mx-auto p-4 md:p-6 pb-20 relative animate-fadeIn">
                     <div className="flex justify-between items-center mb-6 bg-[#232527] p-3 rounded-xl border border-[#393b3d] shadow-lg relative z-10">
-                        <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 bg-[#ff3e3e] hover:bg-[#ff5e5e] text-white font-bold rounded-lg transition shadow-md active:translate-y-0.5"><Home size={18} /> LEAVE GAME</button>
+                        <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 bg-[#ff3e3e] hover:bg-[#ff5e5e] text-white font-bold rounded-lg transition shadow-md active:translate-y-0.5"><Home size={18} /> LEAVE</button>
                         <div className="flex-1 mx-6 flex items-center gap-3">
-                            <div className="text-white font-black text-sm uppercase">Quest Progress</div>
-                            <div className="flex-1 h-6 bg-black rounded-full border-2 border-[#555] overflow-hidden relative">
-                                <div className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-500" style={{ width: `${((currentQIndex + 1) / unit.questions.length) * 100}%` }}></div>
-                            </div>
+                            <div className="text-white font-black text-sm uppercase">Quest</div>
+                            <div className="flex-1 h-6 bg-black rounded-full border-2 border-[#555] overflow-hidden relative"><div className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-500" style={{ width: `${((currentQIndex + 1) / unit.questions.length) * 100}%` }}></div></div>
                         </div>
                     </div>
                     <div className="flex flex-col md:flex-row gap-6 items-stretch relative z-10">
-                        <div className="md:w-1/4 flex flex-col items-center justify-start space-y-4 animate-slideUp">
+                        <div className="md:w-1/4 flex flex-col items-center justify-start space-y-4">
                             <div className="relative group">
                                 <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#00b06f] bg-gradient-to-b from-[#232527] to-black overflow-hidden shadow-[0_0_20px_rgba(0,176,111,0.4)]">
-                                    <img src={unit.isAI ? getAvatar('Sensei', 'bottts') : (unit.image || getAvatar('QuestGiver', 'bottts'))} alt="NPC" className="w-full h-full object-cover transform group-hover:scale-110 transition-transform" />
+                                    <img src={unit.isAI ? getAvatar('Sensei', 'bottts') : (unit.image || getAvatar('QuestGiver', 'bottts'))} alt="NPC" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#00b06f] text-white text-xs font-black px-3 py-1 rounded-full border-2 border-[#1e1e24] shadow-md uppercase tracking-wider whitespace-nowrap">{unit.isAI ? "AI Sensei" : "Quest Giver"}</div>
                             </div>
-                            <div className="bg-white text-black p-4 rounded-2xl rounded-tl-none border-4 border-gray-300 shadow-xl relative w-full font-medium text-sm md:text-base">
-                                <p>"Hey there! Can you solve this challenge for me?"</p>
-                                <div className="absolute -top-3 left-6 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[12px] border-b-white transform -rotate-12"></div>
-                            </div>
+                            <div className="bg-white text-black p-4 rounded-2xl rounded-tl-none border-4 border-gray-300 shadow-xl relative w-full font-medium text-sm md:text-base"><p>"Hey there! Can you solve this challenge for me?"</p></div>
                         </div>
                         <div className="flex-1 bg-[#1e1e24] p-6 md:p-10 rounded-3xl border-4 border-[#393b3d] shadow-2xl relative min-h-[400px] flex flex-col justify-center">
                             <h2 className="text-2xl md:text-3xl font-black text-white mb-8 text-center drop-shadow-md leading-relaxed">{question.question}</h2>
                             {question.type === 'grammar_sort' ? (
                                 <div className="space-y-8 w-full">
                                     <div className="min-h-[120px] bg-[#111] rounded-xl p-4 flex flex-wrap gap-3 justify-center items-center border-4 border-[#393b3d] border-dashed relative shadow-inner">
-                                        {sortedWords.map((item, idx) => ( <div key={idx} className="bg-[#00b06f] text-white px-4 py-2 rounded-md font-black shadow-[0_4px_0_#008252] border-2 border-[#00e08e] animate-bounce-short">{item.word}</div> ))}
+                                        {sortedWords.map((item, idx) => ( <div key={idx} className="bg-[#00b06f] text-white px-4 py-2 rounded-md font-black shadow-[0_4px_0_#008252] border-2 border-[#00e08e]">{item.word}</div> ))}
                                     </div>
                                     <div className="flex flex-wrap gap-4 justify-center p-4 bg-[#232527] rounded-xl border border-[#393b3d]">
                                         {question.words.map((word, idx) => ( <SortableWord key={idx} word={word} isSelected={sortedWords.some(sw => sw.originalIndex === idx)} onClick={() => handleWordClick(word, idx)} /> ))}
                                     </div>
                                     {!isAnswered && (
                                         <div className="flex justify-center gap-4 mt-4">
-                                            <button onClick={handleResetSort} className="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-white font-bold shadow-[0_4px_0_#374151] active:translate-y-1 active:shadow-none transition"><RefreshCcw size={24} /></button>
-                                            <button onClick={checkSortAnswer} disabled={sortedWords.length === 0} className="px-8 py-3 bg-[#00b06f] hover:bg-[#00e08e] rounded-xl text-white font-black text-xl shadow-[0_4px_0_#008252] active:translate-y-1 active:shadow-none transition disabled:opacity-50 disabled:transform-none">BUILD IT!</button>
+                                            <button onClick={handleResetSort} className="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-white font-bold"><RefreshCcw size={24} /></button>
+                                            <button onClick={checkSortAnswer} disabled={sortedWords.length === 0} className="px-8 py-3 bg-[#00b06f] hover:bg-[#00e08e] rounded-xl text-white font-black text-xl shadow-[0_4px_0_#008252] active:translate-y-1 transition disabled:opacity-50">BUILD IT!</button>
                                         </div>
                                     )}
                                 </div>
@@ -410,10 +334,10 @@
                         </div>
                     </div>
                     {isAnswered && (
-                        <div className="mt-8 animate-slideUp relative z-20">
+                        <div className="mt-8 relative z-20">
                             <div className={`p-6 md:p-8 rounded-3xl border-4 ${isCorrect ? 'bg-[#00b06f] border-[#00e08e]' : 'bg-[#ff3e3e] border-[#ff6b6b]'} shadow-2xl relative overflow-hidden`}>
                                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 text-white">
-                                    <div className={`p-4 rounded-full bg-white/20 backdrop-blur-md ${isCorrect ? 'animate-bounce' : 'animate-pulse'}`}>{isCorrect ? <Trophy size={48} className="text-yellow-300 drop-shadow-md" /> : <Skull size={48} className="text-white drop-shadow-md" />}</div>
+                                    <div className={`p-4 rounded-full bg-white/20 backdrop-blur-md`}>{isCorrect ? <Award size={48} className="text-yellow-300" /> : <Skull size={48} className="text-white" />}</div>
                                     <div className="flex-1 text-center md:text-left">
                                         <h3 className="font-black text-3xl md:text-4xl uppercase tracking-tighter mb-2">{isCorrect ? "MISSION COMPLETE!" : "GAME OVER!"}</h3>
                                         <p className="font-bold text-white/90 text-lg">{isCorrect ? "+10 Robux earned!" : `Correct answer: ${question.answer}`}</p>
@@ -424,7 +348,7 @@
                                         {!aiExplanation && (<button onClick={askAITeacher} disabled={isLoadingAI} className="text-sm font-bold text-white/80 hover:text-white underline text-center">{isLoadingAI ? "Summoning AI..." : "Why? (Ask Sensei)"}</button>)}
                                     </div>
                                 </div>
-                                {aiExplanation && (<div className="mt-6 bg-black/40 p-4 rounded-xl border-2 border-white/20 text-white font-medium relative z-10 animate-fadeIn"><div className="flex items-center gap-2 mb-2 text-purple-300 font-bold uppercase text-xs tracking-widest"><Sparkles size={14} /> AI Sensei Explanation</div><p>{aiExplanation}</p></div>)}
+                                {aiExplanation && (<div className="mt-6 bg-black/40 p-4 rounded-xl border-2 border-white/20 text-white font-medium relative z-10"><div className="flex items-center gap-2 mb-2 text-purple-300 font-bold uppercase text-xs tracking-widest"><Sparkles size={14} /> AI Sensei Explanation</div><p>{aiExplanation}</p></div>)}
                             </div>
                         </div>
                     )}
@@ -436,14 +360,9 @@
             const allUsers = [...MOCK_LEADERBOARD, { id: 'me', name: userName, xp: userXP, level: userLevel, avatar: getAvatar(userName, 'bottts'), isMe: true }].sort((a, b) => b.xp - a.xp);
             return (
                 <div className="max-w-3xl mx-auto p-4 pt-8 animate-fadeIn pb-20 relative">
-                    <div className="flex items-center mb-6 text-white relative z-10">
-                        <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full mr-4 transition-colors"><ArrowRight className="rotate-180" size={28} /></button>
-                        <h2 className="text-3xl font-black uppercase tracking-widest">Leaderboard</h2>
-                    </div>
+                    <div className="flex items-center mb-6 text-white relative z-10"><button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full mr-4 transition-colors"><ArrowRight className="rotate-180" size={28} /></button><h2 className="text-3xl font-black uppercase tracking-widest">Leaderboard</h2></div>
                     <div className="bg-[#232527]/90 backdrop-blur rounded-xl border border-[#393b3d] overflow-hidden relative z-10">
-                        <div className="grid grid-cols-12 gap-4 p-4 border-b border-[#393b3d] text-gray-400 font-bold text-xs uppercase tracking-wider">
-                            <div className="col-span-1 text-center">Rank</div><div className="col-span-7">Player</div><div className="col-span-2 text-center">Level</div><div className="col-span-2 text-right">Score</div>
-                        </div>
+                        <div className="grid grid-cols-12 gap-4 p-4 border-b border-[#393b3d] text-gray-400 font-bold text-xs uppercase tracking-wider"><div className="col-span-1 text-center">Rank</div><div className="col-span-7">Player</div><div className="col-span-2 text-center">Level</div><div className="col-span-2 text-right">Score</div></div>
                         <div className="max-h-[60vh] overflow-y-auto">
                             {allUsers.map((user, index) => {
                                 const rank = index + 1; const isMe = user.isMe;
@@ -466,17 +385,13 @@
             const percentage = totalScore > 0 ? Math.round((score / totalScore) * 100) : 0; const isHighscore = percentage >= 80;
             return (
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 animate-fadeIn relative">
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none -z-10"></div>
                     {isHighscore && <Confetti />}
-                    <div className="mb-6 relative">
-                        <div className={`absolute inset-0 bg-yellow-400 rounded-full blur-xl opacity-20 animate-pulse`}></div>
-                        {isHighscore ? <Award size={120} className="text-yellow-500 relative z-10 drop-shadow-xl" /> : <Zap size={120} className="text-gray-400 relative z-10" />}
-                    </div>
+                    <div className="mb-6 relative"><div className={`absolute inset-0 bg-yellow-400 rounded-full blur-xl opacity-20 animate-pulse`}></div>{isHighscore ? <Award size={120} className="text-yellow-500 relative z-10 drop-shadow-xl" /> : <Zap size={120} className="text-gray-400 relative z-10" />}</div>
                     <h2 className="text-4xl font-black text-white mb-2">{isHighscore ? "EPIC WIN!" : "GG WP!"}</h2>
-                    <p className="text-gray-400 text-lg mb-8 font-bold">You scored <span className="text-yellow-400">{score} Robux</span> in this match</p>
+                    <p className="text-gray-400 text-lg mb-8 font-bold">You scored <span className="text-yellow-400">{score} Robux</span></p>
                     <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full max-w-sm">
-                        <button onClick={onRetry} className="flex-1 py-4 rounded-xl bg-[#393b3d] text-white font-bold hover:bg-[#4b4d4f] transition-colors flex justify-center items-center"><RefreshCcw size={20} className="mr-2" /> Replay</button>
-                        <button onClick={onHome} className="flex-1 py-4 rounded-xl bg-[#00b06f] text-white font-bold shadow-lg hover:bg-[#00e08e] transition-all flex justify-center items-center"><Home size={20} className="mr-2" /> Lobby</button>
+                        <button onClick={onRetry} className="flex-1 py-4 rounded-xl bg-[#393b3d] text-white font-bold hover:bg-[#4b4d4f] transition-colors"><RefreshCcw size={20} className="mr-2 inline" /> Replay</button>
+                        <button onClick={onHome} className="flex-1 py-4 rounded-xl bg-[#00b06f] text-white font-bold shadow-lg hover:bg-[#00e08e] transition-all"><Home size={20} className="mr-2 inline" /> Lobby</button>
                     </div>
                 </div>
             );
@@ -490,29 +405,30 @@
             const [sessionMaxScore, setSessionMaxScore] = useState(0);
             const [totalXP, setTotalXP] = useState(() => parseInt(localStorage.getItem('fp_totalXP') || 1250));
             const [level, setLevel] = useState(() => parseInt(localStorage.getItem('fp_level') || 6));
-            const [unitProgress, setUnitProgress] = useState(() => JSON.parse(localStorage.getItem('fp_unitProgress') || '{}'));
             const [userName, setUserName] = useState(() => localStorage.getItem('fp_userName') || '');
             const [cursorStatus, setCursorStatus] = useState(null); 
 
             useEffect(() => { if (userName) setScreen('home'); else setScreen('welcome'); }, []);
-            useEffect(() => { localStorage.setItem('fp_totalXP', totalXP); localStorage.setItem('fp_level', level); localStorage.setItem('fp_unitProgress', JSON.stringify(unitProgress)); localStorage.setItem('fp_userName', userName); }, [totalXP, level, unitProgress, userName]);
+            useEffect(() => { localStorage.setItem('fp_totalXP', totalXP); localStorage.setItem('fp_level', level); localStorage.setItem('fp_userName', userName); }, [totalXP, level, userName]);
             useEffect(() => { if (cursorStatus) { const timer = setTimeout(() => setCursorStatus(null), 1500); return () => clearTimeout(timer); } }, [cursorStatus]);
 
             const handleStartApp = (name) => { setUserName(name); setScreen('home'); };
             const handleLogout = () => { setUserName(''); setScreen('welcome'); localStorage.removeItem('fp_userName'); };
             const startUnit = (unit) => { setActiveUnit(unit); setSessionScore(0); setSessionMaxScore(unit.questions.length * 10); setScreen('quiz'); };
+            
             const handleAIGenerate = async (unit) => {
                 setGeneratingId(unit.id);
-                const prompt = `Create 5 multiple choice questions for Grade 6 English level. Topic: ${unit.title}. Context from book: ${unit.description}. Return JSON object {questions: [{id, type:'choice', question, options:[], answer, explanation}]}`;
+                const prompt = `Create 5 multiple choice questions for Grade 6 English level. Topic: ${unit.title}. Context: ${unit.description}. Return JSON object {questions: [{id, type:'choice', question, options:[], answer, explanation}]}`;
                 const data = await callGeminiAPI(prompt, true);
                 setGeneratingId(null);
-                if (data && data.questions) { startUnit({ ...unit, isAI: true, questions: data.questions }); } else { alert("Cần nhập API Key để dùng tính năng này!"); }
+                if (data && data.questions) { startUnit({ ...unit, isAI: true, questions: data.questions }); } else { alert("AI đang bận, thử lại sau!"); }
             };
+
             const handleAnswerSubmit = (isCorrect, questionIndex) => {
                 setCursorStatus(isCorrect ? 'correct' : 'wrong');
                 if (isCorrect) { setSessionScore(prev => prev + 10); setTotalXP(prev => prev + 10); }
-                if (activeUnit && !activeUnit.isAI) { const totalQ = activeUnit.questions.length; const progressPercent = Math.round((questionIndex / totalQ) * 100); setUnitProgress(prev => ({ ...prev, [activeUnit.id]: Math.max(prev[activeUnit.id] || 0, progressPercent) })); }
             };
+
             const finishQuiz = () => { if (Math.floor(totalXP / 1000) > level) setLevel(prev => prev + 1); setScreen('result'); };
 
             if (screen === 'welcome') return <WelcomeScreen onStartApp={handleStartApp} />;
@@ -533,7 +449,7 @@
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {CURRICULUM_DATA.map((unit) => ( <UnitCard key={unit.id} unit={unit} onStart={startUnit} onAIGenerate={handleAIGenerate} isGenerating={generatingId === unit.id} locked={false} progress={unitProgress[unit.id] || 0} /> ))}
+                                    {CURRICULUM_DATA.map((unit) => ( <UnitCard key={unit.id} unit={unit} onStart={startUnit} onAIGenerate={handleAIGenerate} isGenerating={generatingId === unit.id} locked={false} /> ))}
                                 </div>
                             </div>
                         )}
@@ -541,12 +457,11 @@
                         {screen === 'quiz' && activeUnit && ( <QuizScreen unit={activeUnit} onComplete={finishQuiz} onBack={() => setScreen('home')} onAnswerSubmit={handleAnswerSubmit} /> )}
                         {screen === 'result' && ( <ResultScreen score={sessionScore} totalScore={sessionMaxScore} onHome={() => setScreen('home')} onRetry={() => { setSessionScore(0); setScreen('quiz'); }} /> )}
                     </main>
-                    <style>{` @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } @keyframes floatUp { 0% { opacity: 0; transform: translateY(10px) scale(0.8); } 20% { opacity: 1; transform: translateY(-20px) scale(1.1); } 80% { opacity: 1; transform: translateY(-35px) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(0.9); } } @keyframes bounce-short { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } } .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; } .animate-slideUp { animation: slideUp 0.4s ease-out forwards; } .animate-floatUp { animation: floatUp 1s ease-out forwards; } .animate-bounce-short { animation: bounce-short 2s infinite ease-in-out; } `}</style>
+                    <style>{` @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; } `}</style>
                 </div>
             );
         }
 
-        // Render ứng dụng
         const root = createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
