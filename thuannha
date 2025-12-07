@@ -1,0 +1,1055 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { BookOpen, Star, Trophy, ArrowRight, CheckCircle, XCircle, RefreshCcw, Home, Volume2, Award, Zap, Sparkles, Loader, MessageCircleQuestion, Check, X, Play, User, Crown, Medal, Search, Bell, Menu, Gamepad2, MoveRight, Sword, Shield, Skull, MessageSquare } from 'lucide-react';
+
+// --- CẤU HÌNH API ---
+const apiKey = ""; 
+
+const callGeminiAPI = async (prompt, isJson = false) => {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  
+  const payload = {
+    contents: [{ parts: [{ text: prompt }] }]
+  };
+
+  if (isJson) {
+    payload.generationConfig = {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          questions: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                id: { type: "INTEGER" },
+                type: { type: "STRING" },
+                question: { type: "STRING" },
+                options: { type: "ARRAY", items: { type: "STRING" } },
+                answer: { type: "STRING" },
+                explanation: { type: "STRING" }
+              },
+              required: ["id", "type", "question", "options", "answer", "explanation"]
+            }
+          }
+        }
+      }
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) throw new Error('Lỗi API');
+    
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return isJson ? JSON.parse(text) : text;
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return null;
+  }
+};
+
+// --- COMPONENT ROBUX ICON (SVG VECTOR) ---
+const RobuxIcon = ({ className }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path 
+      d="M50 2 L93.3 27 V73 L50 98 L6.7 73 V27 Z M32 32 L68 32 L68 68 L32 68 Z" 
+      fillRule="evenodd"
+    />
+  </svg>
+);
+
+// --- HỆ THỐNG AVATAR ỔN ĐỊNH (DiceBear) ---
+const getAvatar = (seed, type = 'bottts') => 
+  `https://api.dicebear.com/9.x/${type}/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
+
+// --- DỮ LIỆU GIẢ LẬP LEADERBOARD ---
+const MOCK_LEADERBOARD = [
+  { id: 'u1', name: 'BloxMaster_99', xp: 2450, level: 12, avatar: getAvatar('BloxMaster', 'bottts') },
+  { id: 'u2', name: 'NoobSlayer', xp: 2100, level: 10, avatar: getAvatar('NoobSlayer', 'avataaars') },
+  { id: 'u3', name: 'BuildermanFan', xp: 1850, level: 9, avatar: getAvatar('Builder', 'bottts') },
+  { id: 'u4', name: 'ObbyQueen', xp: 1600, level: 8, avatar: getAvatar('Queen', 'avataaars') },
+  { id: 'u5', name: 'RedValkyrie', xp: 1400, level: 7, avatar: getAvatar('RedVal', 'bottts') },
+];
+
+// --- DỮ LIỆU BÀI HỌC (GAME MAPS) ---
+const CURRICULUM_DATA = [
+  {
+    id: 1,
+    title: "Bloxburg City (Unit 1)",
+    image: "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?q=80&w=800&auto=format&fit=crop", 
+    color: "from-blue-600 to-cyan-500",
+    description: "Khám phá thành phố! Học từ vựng về địa điểm và cấu trúc Is there/Are there.",
+    likes: "94%",
+    active: "12.5k",
+    questions: [
+      {
+        id: 1,
+        type: "choice",
+        question: "Is there a _______ in your town where we can see old things?",
+        options: ["library", "museum", "square", "bridge"],
+        answer: "museum",
+        explanation: "Museum (bảo tàng) là nơi trưng bày các đồ vật cũ/cổ."
+      },
+      {
+        id: 2,
+        type: "grammar_sort",
+        question: "Build the correct sentence structure:",
+        words: ["Are", "there", "any", "shops", "here?"],
+        answer: "Are there any shops here?",
+        explanation: "Cấu trúc câu hỏi số nhiều: Are there + any + plural nouns?"
+      },
+      {
+        id: 3,
+        type: "choice",
+        question: "Which word is the opposite of 'modern'?",
+        options: ["new", "clean", "old", "ugly"],
+        answer: "old",
+        explanation: "Modern (hiện đại) trái nghĩa với Old (cũ/cổ)."
+      },
+      {
+        id: 4,
+        type: "choice",
+        question: "The market is _______ the station.",
+        options: ["next", "near", "between", "opposite to"],
+        answer: "near",
+        explanation: "'Near' (gần) không cần 'to'. 'Next' phải đi với 'to'. 'Between' cần 2 vật."
+      }
+    ]
+  },
+  {
+    id: 2,
+    title: "Daily Life Tycoon (Unit 2)",
+    image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=800&auto=format&fit=crop", 
+    color: "from-emerald-500 to-green-600",
+    description: "Quản lý thời gian của bạn! Học về thói quen hàng ngày và thì Hiện tại đơn.",
+    likes: "91%",
+    active: "8.2k",
+    questions: [
+      {
+        id: 1,
+        type: "choice",
+        question: "I usually _______ up at 6.00 a.m.",
+        options: ["get", "gets", "getting", "got"],
+        answer: "get",
+        explanation: "Hiện tại đơn với chủ ngữ 'I' dùng động từ nguyên mẫu."
+      },
+      {
+        id: 2,
+        type: "choice",
+        question: "_______ your dad watch TV in the evening?",
+        options: ["Do", "Is", "Does", "Are"],
+        answer: "Does",
+        explanation: "Câu hỏi hiện tại đơn với chủ ngữ số ít (your dad) dùng trợ động từ 'Does'."
+      },
+      {
+        id: 3,
+        type: "grammar_sort",
+        question: "Sắp xếp câu sau:",
+        words: ["never", "late", "school.", "for", "is", "She"],
+        answer: "She is never late for school.",
+        explanation: "Trạng từ chỉ tần suất (never) đứng sau động từ to be (is)."
+      },
+      {
+        id: 4,
+        type: "choice",
+        question: "What time _______ you go to bed?",
+        options: ["do", "does", "are", "is"],
+        answer: "do",
+        explanation: "Câu hỏi với 'What time' + do + you + V?"
+      }
+    ]
+  },
+  {
+    id: 3,
+    title: "Adopt Me: Wild Life (Unit 3)",
+    image: "https://images.unsplash.com/photo-1546182990-dffeafbe841d?q=80&w=800&auto=format&fit=crop", 
+    color: "from-orange-500 to-amber-600",
+    description: "Từ vựng: Động vật | Ngữ pháp: So sánh nhất",
+    questions: [
+      {
+        id: 1,
+        type: "choice",
+        question: "The ostrich is the _______ bird in the world.",
+        options: ["fast", "faster", "fastest", "most fast"],
+        answer: "fastest",
+        explanation: "So sánh nhất với tính từ ngắn (fast) -> the fastest."
+      },
+      {
+        id: 2,
+        type: "choice",
+        question: "A _______ can survive six months without water.",
+        options: ["frog", "camel", "butterfly", "bear"],
+        answer: "camel",
+        explanation: "Lạc đà (camel) nổi tiếng với khả năng chịu khát."
+      },
+      {
+        id: 3,
+        type: "choice",
+        question: "Choose the correct sentence:",
+        options: ["It's the most ugly animal.", "It's the ugliest animal.", "It's the uglier animal.", "It's ugliest animal."],
+        answer: "It's the ugliest animal.",
+        explanation: "Ugly -> Ugliest (đổi y thành i rồi thêm est)."
+      },
+      {
+        id: 4,
+        type: "choice",
+        question: "Can an eagle see a small animal from a distance?",
+        options: ["Yes, it can.", "No, it can't.", "Yes, it does.", "No, it doesn't."],
+        answer: "Yes, it can.",
+        explanation: "Câu hỏi với 'Can' trả lời bằng 'Yes, it can'."
+      }
+    ]
+  }
+];
+
+// --- COMPONENTS ---
+
+// Confetti Component (Restored)
+const Confetti = () => {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {[...Array(20)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute animate-bounce opacity-70"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `-10%`,
+            animation: `fall ${Math.random() * 3 + 2}s linear infinite`,
+            animationDelay: `${Math.random() * 5}s`,
+            color: ['#FFD700', '#FF6347', '#4169E1', '#32CD32'][Math.floor(Math.random() * 4)],
+            fontSize: '24px'
+          }}
+        >
+          {['🎉', '⭐', '✨', '🎈'][Math.floor(Math.random() * 4)]}
+        </div>
+      ))}
+      <style>{`
+        @keyframes fall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+const CustomCursor = ({ status }) => {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const updatePosition = (e) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', updatePosition);
+    return () => window.removeEventListener('mousemove', updatePosition);
+  }, []);
+
+  if (!status) return null;
+
+  return (
+    <div 
+      className="fixed pointer-events-none z-50 transition-transform duration-75 ease-out flex items-center justify-center"
+      style={{ 
+        left: position.x, 
+        top: position.y,
+        transform: 'translate(-50%, -50%)'
+      }}
+    >
+      <div className={`p-3 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.3)] transform scale-110 animate-bounce border-4 border-white/50 ${
+        status === 'correct' ? 'bg-[#00b06f] text-white rotate-12' : 'bg-[#ff3e3e] text-white -rotate-12'
+      }`}>
+        {status === 'correct' ? <Check size={32} strokeWidth={4} /> : <X size={32} strokeWidth={4} />}
+      </div>
+    </div>
+  );
+};
+
+const Header = ({ score, level, userName, onLogout, onLeaderboardClick }) => {
+  const [xpAnimation, setXpAnimation] = useState(null);
+  const prevScoreRef = useRef(score);
+
+  useEffect(() => {
+    if (score > prevScoreRef.current) {
+      const gained = score - prevScoreRef.current;
+      setXpAnimation(gained);
+      const timer = setTimeout(() => setXpAnimation(null), 1500);
+      prevScoreRef.current = score; 
+      return () => clearTimeout(timer);
+    } else {
+        prevScoreRef.current = score;
+    }
+  }, [score]);
+
+  return (
+    <div className="bg-[#1e1e24] border-b border-[#393b3d] p-3 sticky top-0 z-40 flex justify-between items-center text-white shadow-md relative overflow-hidden">
+      {/* Header Background Pattern */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
+
+      <div className="flex items-center space-x-4 relative z-10">
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg font-black text-2xl tracking-tighter shadow-lg transform hover:scale-105 transition-transform cursor-pointer border border-white/20">
+          BLOX<span className="text-yellow-400">STUDY</span>
+        </div>
+        
+        <div className="hidden md:flex space-x-6 text-gray-300 font-bold text-lg ml-6">
+          <span className="text-white border-b-4 border-white pb-1 cursor-pointer">Discover</span>
+          <span className="hover:text-white cursor-pointer transition-colors">Avatar Shop</span>
+          <span className="hover:text-white cursor-pointer transition-colors">Create</span>
+          <span className="hover:text-white cursor-pointer transition-colors">Robux</span>
+        </div>
+      </div>
+
+      <div className="hidden lg:flex items-center bg-[#232527] border border-[#393b3d] rounded-full px-4 py-2 w-96 mx-4 relative z-10">
+        <Search size={18} className="text-gray-400 mr-2" />
+        <input type="text" placeholder="Search experiences..." className="bg-transparent border-none outline-none text-white w-full placeholder-gray-500 font-medium" disabled />
+      </div>
+
+      <div className="flex items-center space-x-4 relative z-10">
+        {/* Robux Currency Display */}
+        <button 
+          onClick={onLeaderboardClick}
+          className="relative flex items-center bg-[#232527] hover:bg-[#393b3d] px-4 py-1.5 rounded-full border border-[#393b3d] transition-colors group"
+        >
+          <div className="w-6 h-6 mr-2 flex items-center justify-center text-[#00b06f]">
+             {/* Custom SVG Icon */}
+             <RobuxIcon className="w-full h-full drop-shadow-sm" />
+          </div>
+          <span className="font-extrabold text-white text-lg tracking-wide">{score}</span>
+          
+          {xpAnimation && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
+              <div className="text-[#00b06f] font-black text-2xl animate-floatUp whitespace-nowrap bg-black/80 px-3 py-1 rounded-lg border-2 border-[#00b06f] shadow-[0_0_15px_#00b06f] flex items-center">
+                <RobuxIcon className="w-5 h-5 mr-1" />
+                +{xpAnimation}
+              </div>
+            </div>
+          )}
+        </button>
+
+        <div className="flex items-center space-x-3 cursor-pointer" onClick={onLogout}>
+          <div className="text-right hidden sm:block">
+            <div className="font-bold text-sm text-white">{userName}</div>
+            <div className="text-xs text-gray-400 font-bold">Level {level}</div>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-gray-600 overflow-hidden border-2 border-gray-500 hover:border-white transition-colors relative">
+             <img src={getAvatar(userName, 'bottts')} alt="Avatar" className="w-full h-full object-cover" />
+             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#1e1e24] rounded-full"></div>
+          </div>
+        </div>
+        
+        <Bell size={24} className="text-gray-300 hover:text-white cursor-pointer hidden sm:block" />
+      </div>
+    </div>
+  );
+};
+
+const WelcomeScreen = ({ onStartApp }) => {
+  const [name, setName] = useState('');
+
+  return (
+    <div className="min-h-screen bg-[#111] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* Immersive Background Image for Welcome Screen */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2000&auto=format&fit=crop" 
+          alt="Gaming Background" 
+          className="w-full h-full object-cover opacity-20"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#111]"></div>
+      </div>
+
+      {/* Floating Elements (Subtle) */}
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+         <div className="absolute top-20 left-20 w-16 h-16 border-4 border-blue-500 rounded-xl transform rotate-12"></div>
+         <div className="absolute bottom-40 right-40 w-24 h-24 border-4 border-purple-500 rounded-full transform -rotate-12"></div>
+      </div>
+
+      <div className="bg-[#232527]/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md text-center border border-[#393b3d] relative z-10 animate-slideUp">
+        <div className="mb-8 flex justify-center">
+          <div className="w-32 h-32 relative group">
+             <img src={getAvatar('Player1', 'bottts')} alt="Noob" className="w-full h-full object-contain drop-shadow-2xl animate-bounce" />
+          </div>
+        </div>
+        
+        <h1 className="text-4xl font-black text-white mb-2 tracking-tight">BLOX STUDY</h1>
+        <p className="text-gray-300 mb-8 font-medium">Nhập tên nhân vật của bạn để tham gia server!</p>
+        
+        <form onSubmit={(e) => { e.preventDefault(); if(name.trim()) onStartApp(name); }} className="space-y-6">
+          <div className="relative group">
+            <input 
+              type="text" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Display Name..." 
+              className="w-full px-6 py-4 bg-black/50 border-2 border-[#393b3d] rounded-xl focus:border-white focus:ring-0 outline-none transition-all text-xl font-bold text-white placeholder-gray-500 text-center"
+              autoFocus
+            />
+          </div>
+          
+          <button 
+            type="submit"
+            disabled={!name.trim()}
+            className="w-full py-4 bg-[#00b06f] hover:bg-[#00e08e] text-white rounded-xl font-black text-xl shadow-[0_4px_0_#008252] active:shadow-none active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+          >
+            Play
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const UnitCard = ({ unit, onStart, onAIGenerate, locked, isGenerating, progress = 0 }) => (
+  <div 
+    className={`relative group bg-[#232527] rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#393b3d] flex flex-col h-full ${locked ? 'opacity-70 grayscale' : ''}`}
+  >
+    {/* Game Thumbnail with Faded Effect */}
+    <div 
+      onClick={!locked ? () => onStart(unit) : null}
+      className="aspect-video relative cursor-pointer overflow-hidden bg-black"
+    >
+      <img 
+        src={unit.image} 
+        alt={unit.title}
+        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-80"
+        style={{ 
+            maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%)' 
+        }}
+      />
+      
+      <div className="absolute bottom-2 left-2 flex space-x-2 z-10">
+        <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded flex items-center">
+          <span className="text-green-400 mr-1">👍</span> {unit.likes || "95%"}
+        </span>
+        <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded flex items-center">
+          <User size={10} className="mr-1" /> {unit.active || "10k"}
+        </span>
+      </div>
+
+      {locked && (
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
+          <div className="bg-[#232527] p-3 rounded-full border-2 border-gray-500">
+            <XCircle size={32} className="text-gray-400" />
+          </div>
+        </div>
+      )}
+    </div>
+
+    <div className="p-4 flex-1 flex flex-col">
+      <h3 className="text-white font-extrabold text-xl mb-1 line-clamp-1 group-hover:text-blue-400 transition-colors" title={unit.title}>
+        {unit.title}
+      </h3>
+      <p className="text-gray-400 text-sm mb-4 line-clamp-2 h-10">{unit.description}</p>
+      
+      {!locked ? (
+        <div className="mt-auto space-y-3">
+          <div className="w-full bg-[#111] h-2 rounded-full overflow-hidden">
+            <div 
+              className="bg-[#00b06f] h-full rounded-full transition-all duration-1000" 
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+
+          <div className="flex gap-2">
+            <button 
+              onClick={() => onStart(unit)}
+              className="flex-1 bg-[#00b06f] hover:bg-[#00e08e] text-white font-black py-3 rounded-lg shadow-[0_4px_0_#008252] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center text-lg"
+            >
+              <Play size={20} className="mr-2 fill-white" />
+              {progress > 0 ? "Resume" : "Play"}
+            </button>
+            
+            <button 
+              onClick={() => onAIGenerate(unit)}
+              disabled={isGenerating}
+              className="bg-purple-600 hover:bg-purple-500 text-white font-bold p-3 rounded-lg shadow-[0_4px_0_#5b21b6] active:shadow-none active:translate-y-1 transition-all disabled:opacity-50"
+              title="Generate AI Quest"
+            >
+              {isGenerating ? <Loader size={20} className="animate-spin"/> : <Sparkles size={20} />}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-auto pt-4 border-t border-[#393b3d] text-center">
+          <span className="text-gray-500 font-bold text-sm uppercase tracking-widest">Locked Map</span>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+// --- Sortable Word Component (Blocky Style) ---
+const SortableWord = ({ word, onClick, isSelected }) => (
+  <button
+    onClick={onClick}
+    className={`relative group px-6 py-3 font-black text-lg transition-all duration-150 transform ${
+      isSelected 
+        ? 'opacity-50 cursor-default scale-95' 
+        : 'hover:-translate-y-1 active:translate-y-0 cursor-pointer'
+    }`}
+  >
+    {/* 3D Brick Shape */}
+    <div className={`absolute inset-0 rounded-lg ${isSelected ? 'bg-gray-700' : 'bg-[#00a2ff]'}`}></div>
+    <div className={`absolute inset-0 rounded-lg translate-y-1 ${isSelected ? 'bg-gray-800' : 'bg-[#007cc3]'}`}></div>
+    
+    {!isSelected && (
+      <>
+        <div className="absolute -top-1 left-2 w-3 h-2 bg-[#007cc3] rounded-t-sm"></div>
+        <div className="absolute -top-1 right-2 w-3 h-2 bg-[#007cc3] rounded-t-sm"></div>
+      </>
+    )}
+    
+    <span className="relative z-10 text-white drop-shadow-md">{word}</span>
+  </button>
+);
+
+const QuizScreen = ({ unit, onComplete, onBack, onAnswerSubmit, initialIndex = 0 }) => {
+  const [currentQIndex, setCurrentQIndex] = useState(initialIndex);
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState(null);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [sortedWords, setSortedWords] = useState([]);
+
+  const question = unit.questions[currentQIndex];
+  
+  useEffect(() => {
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setIsCorrect(false);
+    setSortedWords([]);
+    setAiExplanation(null);
+    setIsLoadingAI(false);
+  }, [currentQIndex]);
+
+  const handleChoice = (option) => {
+    if (isAnswered) return;
+    setSelectedOption(option);
+    const correct = option === question.answer;
+    handleAnswerLogic(correct);
+  };
+
+  const handleAnswerLogic = (correct) => {
+    setIsAnswered(true);
+    setIsCorrect(correct);
+    onAnswerSubmit(correct, currentQIndex + 1); 
+  };
+
+  const handleWordClick = (word, index) => {
+    if (isAnswered) return;
+    setSortedWords([...sortedWords, { word, originalIndex: index }]);
+  };
+
+  const handleResetSort = () => {
+    if (isAnswered) return;
+    setSortedWords([]);
+  };
+
+  const checkSortAnswer = () => {
+    if (isAnswered) return;
+    const sentence = sortedWords.map(w => w.word).join(" ");
+    const correct = sentence === question.answer;
+    handleAnswerLogic(correct);
+  };
+
+  const askAITeacher = async () => {
+    setIsLoadingAI(true);
+    const prompt = `Giải thích ngắn gọn cho game thủ Roblox lớp 6 tại sao đáp án: "${question.question}" lại là "${question.answer}". Dùng ngôn ngữ vui vẻ, game thủ.`;
+    const explanation = await callGeminiAPI(prompt);
+    setAiExplanation(explanation);
+    setIsLoadingAI(false);
+  };
+
+  const nextQuestion = () => {
+    if (currentQIndex < unit.questions.length - 1) {
+      setCurrentQIndex(c => c + 1);
+    } else {
+      onComplete();
+    }
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto p-4 md:p-6 animate-fadeIn pb-20 relative">
+      {/* Background Texture for Quiz */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none -z-10 fixed"></div>
+
+      {/* Game Top Bar UI */}
+      <div className="flex justify-between items-center mb-6 bg-[#232527] p-3 rounded-xl border border-[#393b3d] shadow-lg relative z-10">
+        <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 bg-[#ff3e3e] hover:bg-[#ff5e5e] text-white font-bold rounded-lg transition shadow-md active:translate-y-0.5">
+          <Home size={18} /> LEAVE GAME
+        </button>
+        
+        {/* Health Bar / Progress */}
+        <div className="flex-1 mx-6 flex items-center gap-3">
+          <div className="text-white font-black text-sm uppercase">Quest Progress</div>
+          <div className="flex-1 h-6 bg-black rounded-full border-2 border-[#555] overflow-hidden relative">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')] opacity-20"></div>
+            <div 
+              className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-500"
+              style={{ width: `${((currentQIndex + 1) / unit.questions.length) * 100}%` }}
+            ></div>
+            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+              {currentQIndex + 1} / {unit.questions.length}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Game Screen */}
+      <div className="flex flex-col md:flex-row gap-6 items-stretch relative z-10">
+        
+        {/* NPC Avatar (Quest Giver) */}
+        <div className="md:w-1/4 flex flex-col items-center justify-start space-y-4 animate-slideUp">
+          <div className="relative group">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#00b06f] bg-gradient-to-b from-[#232527] to-black overflow-hidden shadow-[0_0_20px_rgba(0,176,111,0.4)]">
+              <img 
+                src={unit.isAI ? getAvatar('Sensei', 'bottts') : (unit.image || getAvatar('QuestGiver', 'bottts'))} 
+                alt="NPC" 
+                className="w-full h-full object-cover transform group-hover:scale-110 transition-transform" 
+              />
+            </div>
+            <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#00b06f] text-white text-xs font-black px-3 py-1 rounded-full border-2 border-[#1e1e24] shadow-md uppercase tracking-wider whitespace-nowrap">
+              {unit.isAI ? "AI Sensei" : "Quest Giver"}
+            </div>
+          </div>
+          
+          <div className="bg-white text-black p-4 rounded-2xl rounded-tl-none border-4 border-gray-300 shadow-xl relative w-full font-medium text-sm md:text-base">
+            <p>"Hey there! Can you solve this challenge for me?"</p>
+            <div className="absolute -top-3 left-6 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[12px] border-b-white transform -rotate-12"></div>
+          </div>
+        </div>
+
+        {/* Question & Interaction Area */}
+        <div className="flex-1 bg-[#1e1e24] p-6 md:p-10 rounded-3xl border-4 border-[#393b3d] shadow-2xl relative min-h-[400px] flex flex-col justify-center">
+          
+          <div className="absolute top-4 right-4 flex gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          </div>
+
+          <h2 className="text-2xl md:text-3xl font-black text-white mb-8 text-center drop-shadow-md leading-relaxed">
+            {question.question}
+          </h2>
+
+          {/* Grammar Sort Interface (Roblox Builder Style) */}
+          {question.type === 'grammar_sort' ? (
+            <div className="space-y-8 w-full">
+              <div className="min-h-[120px] bg-[#111] rounded-xl p-4 flex flex-wrap gap-3 justify-center items-center border-4 border-[#393b3d] border-dashed relative shadow-inner">
+                {sortedWords.length === 0 && (
+                  <div className="text-gray-600 font-bold flex flex-col items-center animate-pulse">
+                    <MessageSquare size={32} className="mb-2"/>
+                    <span>Tap bricks to build sentence...</span>
+                  </div>
+                )}
+                {sortedWords.map((item, idx) => (
+                  <div key={idx} className="bg-[#00b06f] text-white px-4 py-2 rounded-md font-black shadow-[0_4px_0_#008252] border-2 border-[#00e08e] animate-bounce-short">
+                    {item.word}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex flex-wrap gap-4 justify-center p-4 bg-[#232527] rounded-xl border border-[#393b3d]">
+                {question.words.map((word, idx) => (
+                  <SortableWord 
+                    key={idx} 
+                    word={word} 
+                    isSelected={sortedWords.some(sw => sw.originalIndex === idx)}
+                    onClick={() => handleWordClick(word, idx)}
+                  />
+                ))}
+              </div>
+
+              {!isAnswered && (
+                <div className="flex justify-center gap-4 mt-4">
+                  <button 
+                    onClick={handleResetSort}
+                    className="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-white font-bold shadow-[0_4px_0_#374151] active:translate-y-1 active:shadow-none transition"
+                  >
+                    <RefreshCcw size={24} />
+                  </button>
+                  <button 
+                    onClick={checkSortAnswer}
+                    disabled={sortedWords.length === 0}
+                    className="px-8 py-3 bg-[#00b06f] hover:bg-[#00e08e] rounded-xl text-white font-black text-xl shadow-[0_4px_0_#008252] active:translate-y-1 active:shadow-none transition disabled:opacity-50 disabled:transform-none"
+                  >
+                    BUILD IT!
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+              {question.options.map((opt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleChoice(opt)}
+                  disabled={isAnswered}
+                  className={`p-6 rounded-2xl text-lg font-bold text-left transition-all transform duration-150 border-b-[6px] active:border-b-0 active:translate-y-1.5 ${
+                    isAnswered
+                      ? opt === question.answer
+                        ? 'bg-[#00b06f] border-[#008252] text-white ring-4 ring-[#00e08e]/30'
+                        : opt === selectedOption
+                          ? 'bg-[#ff3e3e] border-[#b92b2b] text-white opacity-80'
+                          : 'bg-[#2a2a2e] border-[#1a1a1d] text-gray-500 opacity-40'
+                      : 'bg-[#3b82f6] border-[#2563eb] text-white hover:bg-[#4f8bff]'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <span className="bg-black/20 w-8 h-8 flex items-center justify-center rounded-lg mr-3 text-sm font-black">
+                      {String.fromCharCode(65 + idx)}
+                    </span>
+                    {opt}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Feedback Pop-up */}
+      {isAnswered && (
+        <div className="mt-8 animate-slideUp relative z-20">
+          <div className={`p-6 md:p-8 rounded-3xl border-4 ${isCorrect ? 'bg-[#00b06f] border-[#00e08e]' : 'bg-[#ff3e3e] border-[#ff6b6b]'} shadow-2xl relative overflow-hidden`}>
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 text-white">
+              <div className={`p-4 rounded-full bg-white/20 backdrop-blur-md ${isCorrect ? 'animate-bounce' : 'animate-pulse'}`}>
+                {isCorrect ? <Trophy size={48} className="text-yellow-300 drop-shadow-md" /> : <Skull size={48} className="text-white drop-shadow-md" />}
+              </div>
+              
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="font-black text-3xl md:text-4xl uppercase tracking-tighter mb-2">
+                  {isCorrect ? "MISSION COMPLETE!" : "GAME OVER!"}
+                </h3>
+                <p className="font-bold text-white/90 text-lg">
+                  {isCorrect ? "+10 Robux earned!" : `Correct answer: ${question.answer}`}
+                </p>
+                {question.explanation && (
+                  <p className="mt-2 text-sm bg-black/20 p-2 rounded-lg inline-block">
+                    💡 {question.explanation}
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex flex-col gap-3 min-w-[200px]">
+                <button 
+                  onClick={nextQuestion}
+                  className="w-full bg-white text-black font-black py-4 px-6 rounded-xl shadow-[0_4px_0_#ccc] active:shadow-none active:translate-y-1 hover:bg-gray-100 transition-all uppercase flex items-center justify-center gap-2"
+                >
+                  {currentQIndex < unit.questions.length - 1 ? "Next Stage" : "Finish Obby"} <ArrowRight size={20} strokeWidth={3}/>
+                </button>
+                
+                {!aiExplanation && (
+                  <button onClick={askAITeacher} disabled={isLoadingAI} className="text-sm font-bold text-white/80 hover:text-white underline text-center">
+                    {isLoadingAI ? "Summoning AI..." : "Why? (Ask Sensei)"}
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {aiExplanation && (
+              <div className="mt-6 bg-black/40 p-4 rounded-xl border-2 border-white/20 text-white font-medium relative z-10 animate-fadeIn">
+                <div className="flex items-center gap-2 mb-2 text-purple-300 font-bold uppercase text-xs tracking-widest">
+                  <Sparkles size={14} /> AI Sensei Explanation
+                </div>
+                <p>{aiExplanation}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Leaderboard Screen (Roblox Player List Style) ---
+const LeaderboardScreen = ({ userXP, userName, userLevel, onBack }) => {
+  const allUsers = [
+    ...MOCK_LEADERBOARD,
+    { id: 'me', name: userName, xp: userXP, level: userLevel, avatar: getAvatar(userName, 'bottts'), isMe: true }
+  ].sort((a, b) => b.xp - a.xp);
+
+  return (
+    <div className="max-w-3xl mx-auto p-4 pt-8 animate-fadeIn pb-20 relative">
+      <div className="flex items-center mb-6 text-white relative z-10">
+        <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full mr-4 transition-colors">
+          <ArrowRight className="rotate-180" size={28} />
+        </button>
+        <h2 className="text-3xl font-black uppercase tracking-widest">Leaderboard</h2>
+      </div>
+
+      <div className="bg-[#232527]/90 backdrop-blur rounded-xl border border-[#393b3d] overflow-hidden relative z-10">
+        <div className="grid grid-cols-12 gap-4 p-4 border-b border-[#393b3d] text-gray-400 font-bold text-xs uppercase tracking-wider">
+          <div className="col-span-1 text-center">Rank</div>
+          <div className="col-span-7">Player</div>
+          <div className="col-span-2 text-center">Level</div>
+          <div className="col-span-2 text-right">Score</div>
+        </div>
+
+        <div className="max-h-[60vh] overflow-y-auto">
+          {allUsers.map((user, index) => {
+            const rank = index + 1;
+            const isMe = user.isMe;
+            return (
+              <div 
+                key={user.id} 
+                className={`grid grid-cols-12 gap-4 p-4 items-center border-b border-[#393b3d] hover:bg-white/5 transition-colors ${isMe ? 'bg-white/10 border-l-4 border-l-green-500' : ''}`}
+              >
+                <div className="col-span-1 text-center font-black text-xl text-gray-500">
+                  {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
+                </div>
+                <div className="col-span-7 flex items-center gap-3">
+                  <img src={user.avatar} alt="avt" className="w-10 h-10 rounded-full bg-black border border-gray-600 object-cover" />
+                  <span className={`font-bold text-lg ${isMe ? 'text-green-400' : 'text-white'}`}>{user.name}</span>
+                </div>
+                <div className="col-span-2 text-center text-gray-300 font-mono font-bold">
+                  {user.level}
+                </div>
+                <div className="col-span-2 text-right text-yellow-400 font-black font-mono text-lg flex items-center justify-end gap-1">
+                  <RobuxIcon className="w-4 h-4 text-[#00b06f]" />
+                  {user.xp}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ResultScreen = ({ score, totalScore, onHome, onRetry }) => {
+  const percentage = totalScore > 0 ? Math.round((score / totalScore) * 100) : 0;
+  const isHighscore = percentage >= 80;
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 animate-fadeIn relative">
+      {/* Background Texture for Result */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none -z-10"></div>
+      
+      {isHighscore && <Confetti />}
+      
+      <div className="mb-6 relative">
+        <div className={`absolute inset-0 bg-yellow-400 rounded-full blur-xl opacity-20 animate-pulse`}></div>
+        {isHighscore ? (
+          <Award size={120} className="text-yellow-500 relative z-10 drop-shadow-xl" />
+        ) : (
+          <Zap size={120} className="text-gray-400 relative z-10" />
+        )}
+      </div>
+
+      <h2 className="text-4xl font-black text-white mb-2">
+        {isHighscore ? "EPIC WIN!" : "GG WP!"}
+      </h2>
+      <p className="text-gray-400 text-lg mb-8 font-bold">
+        You scored <span className="text-yellow-400">{score} Robux</span> in this match
+      </p>
+
+      <div className="grid grid-cols-2 gap-4 w-full max-w-sm mb-8">
+        <div className="bg-[#232527] p-4 rounded-2xl shadow-sm border border-[#393b3d]">
+          <div className="text-gray-500 text-xs uppercase font-bold tracking-wider">Accuracy</div>
+          <div className="text-3xl font-black text-[#00b06f]">{percentage}%</div>
+        </div>
+        <div className="bg-[#232527] p-4 rounded-2xl shadow-sm border border-[#393b3d]">
+          <div className="text-gray-500 text-xs uppercase font-bold tracking-wider">Bonus Robux</div>
+          <div className="text-3xl font-black text-orange-500">+{Math.floor(score / 5)}</div>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full max-w-sm">
+        <button 
+          onClick={onRetry}
+          className="flex-1 py-4 rounded-xl bg-[#393b3d] text-white font-bold hover:bg-[#4b4d4f] transition-colors flex justify-center items-center"
+        >
+          <RefreshCcw size={20} className="mr-2" /> Replay
+        </button>
+        <button 
+          onClick={onHome}
+          className="flex-1 py-4 rounded-xl bg-[#00b06f] text-white font-bold shadow-lg hover:bg-[#00e08e] transition-all flex justify-center items-center"
+        >
+          <Home size={20} className="mr-2" /> Lobby
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default function App() {
+  const [screen, setScreen] = useState('welcome');
+  const [activeUnit, setActiveUnit] = useState(null);
+  const [generatingId, setGeneratingId] = useState(null);
+  const [sessionScore, setSessionScore] = useState(0);
+  const [sessionMaxScore, setSessionMaxScore] = useState(0);
+  
+  const [totalXP, setTotalXP] = useState(() => parseInt(localStorage.getItem('fp_totalXP') || 1250));
+  const [level, setLevel] = useState(() => parseInt(localStorage.getItem('fp_level') || 6));
+  const [unitProgress, setUnitProgress] = useState(() => JSON.parse(localStorage.getItem('fp_unitProgress') || '{}'));
+  const [userName, setUserName] = useState(() => localStorage.getItem('fp_userName') || '');
+  const [cursorStatus, setCursorStatus] = useState(null); 
+
+  useEffect(() => {
+    if (userName) setScreen('home');
+    else setScreen('welcome');
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('fp_totalXP', totalXP);
+    localStorage.setItem('fp_level', level);
+    localStorage.setItem('fp_unitProgress', JSON.stringify(unitProgress));
+    localStorage.setItem('fp_userName', userName);
+  }, [totalXP, level, unitProgress, userName]);
+
+  useEffect(() => {
+    if (cursorStatus) {
+      const timer = setTimeout(() => setCursorStatus(null), 1500); 
+      return () => clearTimeout(timer);
+    }
+  }, [cursorStatus]);
+
+  const handleStartApp = (name) => {
+    setUserName(name);
+    setScreen('home');
+  };
+
+  const handleLogout = () => {
+    setUserName('');
+    setScreen('welcome');
+    localStorage.removeItem('fp_userName');
+  };
+
+  const startUnit = (unit) => {
+    setActiveUnit(unit);
+    setSessionScore(0);
+    setSessionMaxScore(unit.questions.length * 10);
+    setScreen('quiz');
+  };
+
+  const handleAIGenerate = async (unit) => {
+    setGeneratingId(unit.id);
+    const prompt = `Create 5 multiple choice questions for Grade 6 English level. Topic: ${unit.title}. Context from book: ${unit.description}. Return JSON object {questions: [{id, type:'choice', question, options:[], answer, explanation}]}`;
+    const data = await callGeminiAPI(prompt, true);
+    setGeneratingId(null);
+    if (data && data.questions) {
+      startUnit({ ...unit, isAI: true, questions: data.questions });
+    } else {
+      alert("AI Server Busy!");
+    }
+  };
+
+  const handleAnswerSubmit = (isCorrect, questionIndex) => {
+    setCursorStatus(isCorrect ? 'correct' : 'wrong');
+    if (isCorrect) {
+      setSessionScore(prev => prev + 10);
+      setTotalXP(prev => prev + 10); 
+    }
+    if (activeUnit && !activeUnit.isAI) {
+      const totalQ = activeUnit.questions.length;
+      const progressPercent = Math.round((questionIndex / totalQ) * 100);
+      setUnitProgress(prev => ({
+        ...prev,
+        [activeUnit.id]: Math.max(prev[activeUnit.id] || 0, progressPercent)
+      }));
+    }
+  };
+
+  const finishQuiz = () => {
+    if (Math.floor(totalXP / 1000) > level) setLevel(prev => prev + 1);
+    setScreen('result');
+  };
+
+  if (screen === 'welcome') return <WelcomeScreen onStartApp={handleStartApp} />;
+
+  return (
+    <div className="min-h-screen bg-[#111] font-sans text-gray-200 pb-10 cursor-default selection:bg-green-500 selection:text-white">
+      <CustomCursor status={cursorStatus} />
+      {screen !== 'quiz' && <Header score={totalXP} level={level} userName={userName} onLogout={handleLogout} onLeaderboardClick={() => setScreen('leaderboard')} />}
+
+      <main className="container mx-auto px-4 pt-6">
+        {screen === 'home' && (
+          <div className="animate-fadeIn">
+            {/* Banner */}
+            <div className="mb-8 rounded-2xl overflow-hidden relative shadow-2xl group cursor-pointer border border-[#393b3d]">
+                <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1200&auto=format&fit=crop" className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-700" alt="Featured" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-transparent flex flex-col justify-end p-8">
+                    <span className="bg-yellow-500 text-black font-black px-2 py-1 rounded w-fit text-xs mb-2">EVENT</span>
+                    <h2 className="text-4xl font-black text-white mb-2 drop-shadow-lg">SUMMER UPDATE IS HERE!</h2>
+                    <p className="text-gray-200 mb-4 font-medium max-w-lg">New maps, new pets, and new vocabulary challenges await in the Learning World update.</p>
+                    <button className="bg-white text-black font-black py-3 px-8 rounded-lg w-fit hover:bg-gray-200 transition-colors flex items-center">
+                        <Play size={20} className="mr-2 fill-black" /> PLAY NOW
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-black text-white flex items-center"><Gamepad2 className="mr-2"/> Recommended For You</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {CURRICULUM_DATA.map((unit) => (
+                <UnitCard 
+                  key={unit.id} 
+                  unit={unit} 
+                  onStart={startUnit} 
+                  onAIGenerate={handleAIGenerate}
+                  isGenerating={generatingId === unit.id}
+                  locked={false}
+                  progress={unitProgress[unit.id] || 0}
+                />
+              ))}
+              {/* Dummy locked units */}
+              <UnitCard unit={{title: "Learning World (Locked)", image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=800&auto=format&fit=crop", description: "This map is currently under maintenance."}} locked={true} />
+            </div>
+          </div>
+        )}
+
+        {screen === 'leaderboard' && (
+          <LeaderboardScreen userXP={totalXP} userName={userName} userLevel={level} onBack={() => setScreen('home')} />
+        )}
+
+        {screen === 'quiz' && activeUnit && (
+          <QuizScreen 
+            unit={activeUnit} 
+            onComplete={finishQuiz}
+            onBack={() => setScreen('home')}
+            onAnswerSubmit={handleAnswerSubmit}
+          />
+        )}
+        
+        {screen === 'result' && (
+          <ResultScreen 
+            score={sessionScore} 
+            totalScore={sessionMaxScore}
+            onHome={() => setScreen('home')}
+            onRetry={() => {
+               setSessionScore(0);
+               setScreen('quiz');
+            }}
+          />
+        )}
+      </main>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes floatUp { 0% { opacity: 0; transform: translateY(10px) scale(0.8); } 20% { opacity: 1; transform: translateY(-20px) scale(1.1); } 80% { opacity: 1; transform: translateY(-35px) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(0.9); } }
+        @keyframes bounce-short { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-slideUp { animation: slideUp 0.4s ease-out forwards; }
+        .animate-floatUp { animation: floatUp 1s ease-out forwards; }
+        .animate-bounce-short { animation: bounce-short 2s infinite ease-in-out; }
+      `}</style>
+    </div>
+  );
+}
